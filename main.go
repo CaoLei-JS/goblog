@@ -67,10 +67,32 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "<h1>请求页面未找到 :(</h1><p>如有疑惑，请联系我们。</p>")
 }
 
+type Article struct {
+	Title, Body string
+	ID          int64
+}
+
 func articlesShowHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	id := vars["id"]
-	fmt.Fprint(w, "文章 ID："+id)
+
+	article := Article{}
+	query := "SELECT * FROM articles where id = ?"
+	err := db.QueryRow(query, id).Scan(&article.ID, &article.Title, &article.Body)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			w.WriteHeader(http.StatusNotFound)
+			fmt.Fprint(w, "404 文章未找到")
+		} else {
+			checkError(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, "500 服务器内部错误")
+		}
+	} else {
+		tmpl, err :=template.ParseFiles("resources/views/articles/show.gohtml")
+		checkError(err)
+		tmpl.Execute(w, article)
+	}
 }
 
 func articlesIndexHandler(w http.ResponseWriter, r *http.Request) {
@@ -105,9 +127,9 @@ func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
 	// 检查是否有错误
 	if len(errors) == 0 {
 		lastInsertId, err := saveArticleToDB(title, body)
-		if(lastInsertId >0){
-			fmt.Fprint(w, "插入成功， ID为"+ strconv.FormatInt(lastInsertId, 10))
-		}else{
+		if lastInsertId > 0 {
+			fmt.Fprint(w, "插入成功， ID为"+strconv.FormatInt(lastInsertId, 10))
+		} else {
 			checkError(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			fmt.Fprint(w, "500 服务器内部错误")
@@ -129,11 +151,11 @@ func articlesStoreHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func saveArticleToDB(title string, body string)(int64, error)  {
-	var(
-		id int64
-		err error
-		rs sql.Result
+func saveArticleToDB(title string, body string) (int64, error) {
+	var (
+		id   int64
+		err  error
+		rs   sql.Result
 		stmt *sql.Stmt
 	)
 
@@ -148,8 +170,8 @@ func saveArticleToDB(title string, body string)(int64, error)  {
 		return 0, err
 	}
 
-	if id, err =rs.LastInsertId(); id>0 {
-		return id ,nil
+	if id, err = rs.LastInsertId(); id > 0 {
+		return id, nil
 	}
 
 	return 0, nil
