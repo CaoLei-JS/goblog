@@ -3,9 +3,9 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
+	"goblog/pkg/database"
 	"goblog/pkg/logger"
 	"goblog/pkg/route"
 	"goblog/pkg/types"
@@ -14,43 +14,11 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 	"unicode/utf8"
 )
 
 var router *mux.Router
 var db *sql.DB
-
-func initDB() {
-	var err error
-	config := mysql.Config{
-		User:                 "root",
-		Passwd:               "password",
-		Addr:                 "127.0.0.1:3306",
-		Net:                  "tcp",
-		DBName:               "go_blog",
-		AllowNativePasswords: true,
-	}
-	db, err = sql.Open("mysql", config.FormatDSN())
-	if err != nil {
-		logger.LogError(err)
-	} else {
-		db.SetMaxOpenConns(25)
-		db.SetMaxIdleConns(25)
-		db.SetConnMaxLifetime(5 * time.Minute)
-		err = db.Ping()
-		logger.LogError(err)
-	}
-}
-
-func createTables() {
-	createArticlesSQL := `CREATE TABLE IF NOT EXISTS articles (
-id bigint(20) PRIMARY KEY AUTO_INCREMENT NOT NULL,
-title varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-body longtext COLLATE utf8mb4_unicode_ci);`
-	_, err := db.Exec(createArticlesSQL)
-	logger.LogError(err)
-}
 
 func homeHandler(w http.ResponseWriter, _ *http.Request) {
 	_, err := fmt.Fprint(w, "<h1>Hello, 欢迎来到 goblog！</h1>")
@@ -416,10 +384,12 @@ func (a Article) Delete() (rowsAffected int64, err error) {
 }
 
 func main() {
-	initDB()
-	createTables()
+	database.Initialize()
+	db = database.DB
+
 	route.Initialize()
 	router = route.Router
+	
 	router.HandleFunc("/", homeHandler).Methods("GET").Name("home")
 	router.HandleFunc("/about", aboutHandler).Methods("GET").Name("about")
 
