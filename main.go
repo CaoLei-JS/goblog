@@ -6,7 +6,7 @@ import (
 	"github.com/go-sql-driver/mysql"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
-	route "goblog/pkg/router"
+	route "goblog/pkg/route"
 	"html/template"
 	"log"
 	"net/http"
@@ -324,7 +324,7 @@ func validateArticleFormData(title string, body string) map[string]string {
 }
 
 func articlesUpdateHandler(w http.ResponseWriter, r *http.Request) {
-	id := getRouteVariable("id", r)
+	id := route.GetRouteVariable("id", r)
 	_, err := getArticleByID(id)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -371,10 +371,7 @@ func articlesUpdateHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func getRouteVariable(parameterName string, r *http.Request) string {
-	vars := mux.Vars(r)
-	return vars[parameterName]
-}
+
 
 func getArticleByID(id string) (Article, error) {
 	article := Article{}
@@ -384,7 +381,7 @@ func getArticleByID(id string) (Article, error) {
 }
 
 func articlesDeleteHandler(w http.ResponseWriter, r *http.Request) {
-	id := getRouteVariable("id", r)
+	id := route.GetRouteVariable("id", r)
 	article, err := getArticleByID(id)
 	// 3. 如果出现错误
 	if err != nil {
