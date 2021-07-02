@@ -1,12 +1,12 @@
 package controllers
 
 import (
-	"database/sql"
 	"fmt"
-	"goblog/pkg/database"
+	"goblog/app/models/article"
 	"goblog/pkg/logger"
 	"goblog/pkg/route"
 	"goblog/pkg/types"
+	"gorm.io/gorm"
 	"html/template"
 	"net/http"
 )
@@ -14,32 +14,16 @@ import (
 type ArticlesController struct {
 }
 
-var db *sql.DB
-
-func getArticleByID(id string) (Article, error) {
-	database.Initialize()
-	db = database.DB
-	article := Article{}
-	query := "SELECT * FROM articles WHERE id = ?"
-	err := db.QueryRow(query, id).Scan(&article.ID, &article.Title, &article.Body)
-	return article, err
-}
-
-type Article struct {
-	Title, Body string
-	ID          int64
-}
-
 func (*ArticlesController) Show(w http.ResponseWriter, r *http.Request) {
 	// 1. 获取 URL 参数
 	id := route.GetRouteVariable("id", r)
 
 	// 2. 读取对应的文章数据
-	article, err := getArticleByID(id)
+	article, err := article.Get(id)
 
 	// 3. 如果出现错误
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if err == gorm.ErrRecordNotFound {
 			// 3.1 数据未找到
 			w.WriteHeader(http.StatusNotFound)
 			fmt.Fprint(w, "404 文章未找到")
